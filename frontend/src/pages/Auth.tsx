@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Leaf, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Auth = () => {
+  const navigate = useNavigate();
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -98,6 +99,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-secondary flex items-center justify-center p-4">
       <div className="w-full max-w-md">
+      
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
@@ -107,6 +109,11 @@ const Auth = () => {
             <span className="text-2xl font-bold text-foreground">ReWear</span>
           </Link>
           <p className="text-muted-foreground">Join the sustainable fashion community</p>
+        </div>
+       
+         {/* Back to Home Button */}
+         <div className="mb-4 text-left">
+          <Button variant="outline" onClick={() => navigate('/')}>Back to Home</Button>
         </div>
 
         <Card className="shadow-strong">
