@@ -177,11 +177,19 @@ const Landing = () => {
               featuredItems.map((item) => (
                 <Card key={item.id} className="overflow-hidden hover:shadow-medium transition-all duration-300 group">
                   <div className="aspect-square overflow-hidden">
-                    <img 
-                      src={item.photo && (item.photo.startsWith('http') ? item.photo : `http://localhost:8000${item.photo}`)} 
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    {item.images && item.images.length > 0 ? (
+                      <img
+                        src={item.images[0].startsWith('http') ? item.images[0] : `http://localhost:8000${item.images[0]}`}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <img
+                        src={item.photo && (item.photo.startsWith('http') ? item.photo : `http://localhost:8000${item.photo}`)}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
                   </div>
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
