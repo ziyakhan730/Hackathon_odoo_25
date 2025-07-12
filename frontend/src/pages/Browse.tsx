@@ -92,11 +92,19 @@ const Browse = () => {
     <Card className="overflow-hidden hover:shadow-medium transition-all duration-300 group">
       <Link to={`/item/${item.id}`}>
         <div className="aspect-square overflow-hidden relative">
-          <img 
-            src={getImageUrl(item.photo)} 
-            alt={item.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+          {item.images && item.images.length > 0 ? (
+            <img
+              src={item.images[0].startsWith('http') ? item.images[0] : `http://localhost:8000${item.images[0]}`}
+              alt={item.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <img
+              src={getImageUrl(item.photo)}
+              alt={item.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -141,11 +149,19 @@ const Browse = () => {
       <CardContent className="p-4">
         <div className="flex gap-4">
           <Link to={`/item/${item.id}`} className="flex-shrink-0">
-            <img 
-              src={getImageUrl(item.photo)} 
-              alt={item.title}
-              className="w-24 h-24 object-cover rounded-md"
-            />
+            {item.images && item.images.length > 0 ? (
+              <img
+                src={item.images[0].startsWith('http') ? item.images[0] : `http://localhost:8000${item.images[0]}`}
+                alt={item.title}
+                className="w-24 h-24 object-cover rounded-md"
+              />
+            ) : (
+              <img
+                src={getImageUrl(item.photo)}
+                alt={item.title}
+                className="w-24 h-24 object-cover rounded-md"
+              />
+            )}
           </Link>
           
           <div className="flex-1 min-w-0">
