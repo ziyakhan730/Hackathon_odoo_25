@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,105 +24,45 @@ const Browse = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [category, setCategory] = useState('All Categories');
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [brand, setBrand] = useState('All Brands');
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const items = [
-    {
-      id: 1,
-      title: "Vintage Denim Jacket",
-      category: "Jackets",
-      size: "M",
-      condition: "Excellent",
-      points: 25,
-      brand: "Levi's",
-      image: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center",
-      owner: "Sarah M.",
-      location: "San Francisco, CA",
-      rating: 4.8,
-      distance: "2 miles",
-      postedDate: "2 days ago",
-      isFavorited: false
-    },
-    {
-      id: 2,
-      title: "Designer Silk Blouse",
-      category: "Tops",
-      size: "S",
-      condition: "Like New",
-      points: 35,
-      brand: "Theory",
-      image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=300&h=300&fit=crop&crop=center",
-      owner: "Emma K.",
-      location: "Oakland, CA",
-      rating: 4.9,
-      distance: "5 miles",
-      postedDate: "1 day ago",
-      isFavorited: true
-    },
-    {
-      id: 3,
-      title: "Cozy Wool Sweater",
-      category: "Knitwear",
-      size: "L",
-      condition: "Good",
-      points: 20,
-      brand: "Uniqlo",
-      image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&h=300&fit=crop&crop=center",
-      owner: "Alex R.",
-      location: "San Jose, CA",
-      rating: 4.7,
-      distance: "12 miles",
-      postedDate: "3 days ago",
-      isFavorited: false
-    },
-    {
-      id: 4,
-      title: "Summer Floral Dress",
-      category: "Dresses",
-      size: "M",
-      condition: "Excellent",
-      points: 30,
-      brand: "Zara",
-      image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=300&h=300&fit=crop&crop=center",
-      owner: "Maya P.",
-      location: "Berkeley, CA",
-      rating: 4.6,
-      distance: "8 miles",
-      postedDate: "1 week ago",
-      isFavorited: false
-    },
-    {
-      id: 5,
-      title: "Classic White Sneakers",
-      category: "Shoes",
-      size: "9",
-      condition: "Good",
-      points: 18,
-      brand: "Adidas",
-      image: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop&crop=center",
-      owner: "Jordan L.",
-      location: "Palo Alto, CA",
-      rating: 4.9,
-      distance: "15 miles",
-      postedDate: "4 days ago",
-      isFavorited: true
-    },
-    {
-      id: 6,
-      title: "Leather Crossbody Bag",
-      category: "Accessories",
-      size: "One Size",
-      condition: "Excellent",
-      points: 40,
-      brand: "Coach",
-      image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&h=300&fit=crop&crop=center",
-      owner: "Lisa W.",
-      location: "Mountain View, CA",
-      rating: 4.8,
-      distance: "10 miles",
-      postedDate: "5 days ago",
-      isFavorited: false
-    }
-  ];
+  // Helper to build query string
+  const buildQuery = () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.append('search', searchQuery);
+    if (category && category !== 'All Categories') params.append('category', category);
+    if (selectedSizes.length > 0) params.append('size', selectedSizes.join(','));
+    if (selectedConditions.length > 0) params.append('condition', selectedConditions.join(','));
+    if (brand && brand !== 'All Brands') params.append('brand', brand);
+    return params.toString() ? `?${params.toString()}` : '';
+  };
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch(`http://localhost:8000/api/items/${buildQuery()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setItems(data);
+        } else {
+          setError('Failed to fetch items');
+        }
+      } catch (err) {
+        setError('Network error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItems();
+  }, [searchQuery, category, selectedSizes, selectedConditions, brand]);
 
   const categories = [
     'All Categories', 'Tops', 'Bottoms', 'Dresses', 'Jackets', 'Knitwear', 
@@ -143,12 +83,17 @@ const Browse = () => {
     }
   };
 
-  const ItemCard = ({ item }: { item: typeof items[0] }) => (
+  const getImageUrl = (photo: string) => {
+    if (!photo) return '';
+    return photo.startsWith('http') ? photo : `http://localhost:8000${photo}`;
+  };
+
+  const ItemCard = ({ item }: { item: any }) => (
     <Card className="overflow-hidden hover:shadow-medium transition-all duration-300 group">
       <Link to={`/item/${item.id}`}>
         <div className="aspect-square overflow-hidden relative">
           <img 
-            src={item.image} 
+            src={getImageUrl(item.photo)} 
             alt={item.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -163,7 +108,7 @@ const Browse = () => {
           >
             <Heart className={`h-4 w-4 ${item.isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
           </Button>
-          <Badge className="absolute bottom-2 left-2 bg-primary">{item.points} pts</Badge>
+          <Badge className="absolute bottom-2 left-2 bg-primary">{item.points || 0} pts</Badge>
         </div>
       </Link>
       
@@ -177,36 +122,27 @@ const Browse = () => {
         <div className="flex gap-2 mb-3">
           <Badge variant="outline" className="text-xs">{item.brand}</Badge>
           <Badge variant="outline" className="text-xs">Size {item.size}</Badge>
-          <Badge className={`text-xs ${getConditionColor(item.condition)}`}>
-            {item.condition}
-          </Badge>
+          <Badge className={`text-xs ${getConditionColor(item.condition)}`}>{item.condition}</Badge>
         </div>
         
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center justify-between">
-            <span>by {item.owner}</span>
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3 fill-warning text-warning" />
-              <span>{item.rating}</span>
-            </div>
+            <span>Owner ID: {item.owner}</span>
+            {/* You can fetch/display owner info if needed */}
           </div>
-          <div className="flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            <span>{item.distance} away</span>
-          </div>
-          <div className="text-xs">Posted {item.postedDate}</div>
+          <div className="text-xs">Created {item.created_at?.slice(0, 10)}</div>
         </div>
       </CardContent>
     </Card>
   );
 
-  const ItemListCard = ({ item }: { item: typeof items[0] }) => (
+  const ItemListCard = ({ item }: { item: any }) => (
     <Card className="overflow-hidden hover:shadow-medium transition-all duration-300">
       <CardContent className="p-4">
         <div className="flex gap-4">
           <Link to={`/item/${item.id}`} className="flex-shrink-0">
             <img 
-              src={item.image} 
+              src={getImageUrl(item.photo)} 
               alt={item.title}
               className="w-24 h-24 object-cover rounded-md"
             />
@@ -220,7 +156,7 @@ const Browse = () => {
                 </h3>
               </Link>
               <div className="flex items-center gap-2">
-                <Badge className="bg-primary">{item.points} pts</Badge>
+                <Badge className="bg-primary">{item.points || 0} pts</Badge>
                 <Button variant="ghost" size="icon">
                   <Heart className={`h-4 w-4 ${item.isFavorited ? 'fill-red-500 text-red-500' : ''}`} />
                 </Button>
@@ -231,24 +167,14 @@ const Browse = () => {
               <Badge variant="outline" className="text-xs">{item.brand}</Badge>
               <Badge variant="outline" className="text-xs">{item.category}</Badge>
               <Badge variant="outline" className="text-xs">Size {item.size}</Badge>
-              <Badge className={`text-xs ${getConditionColor(item.condition)}`}>
-                {item.condition}
-              </Badge>
+              <Badge className={`text-xs ${getConditionColor(item.condition)}`}>{item.condition}</Badge>
             </div>
             
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-4">
-                <span>by {item.owner}</span>
-                <div className="flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-warning text-warning" />
-                  <span>{item.rating}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  <span>{item.distance} away</span>
-                </div>
+                <span>Owner ID: {item.owner}</span>
+                <div className="text-xs">Created {item.created_at?.slice(0, 10)}</div>
               </div>
-              <div className="text-xs">Posted {item.postedDate}</div>
             </div>
           </div>
         </div>
@@ -307,14 +233,14 @@ const Browse = () => {
               {/* Category */}
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select defaultValue="all">
+                <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{category}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(category => (
-                      <SelectItem key={category} value={category.toLowerCase().replace(' ', '-')}>
-                        {category}
+                    {categories.map(categoryOption => (
+                      <SelectItem key={categoryOption} value={categoryOption}>
+                        {categoryOption}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -327,7 +253,9 @@ const Browse = () => {
                 <div className="grid grid-cols-3 gap-2">
                   {sizes.map(size => (
                     <div key={size} className="flex items-center space-x-2">
-                      <Checkbox id={size} />
+                      <Checkbox id={size} checked={selectedSizes.includes(size)} onCheckedChange={checked => {
+                        setSelectedSizes(prev => checked ? [...prev, size] : prev.filter(s => s !== size));
+                      }} />
                       <Label htmlFor={size} className="text-sm">{size}</Label>
                     </div>
                   ))}
@@ -337,11 +265,13 @@ const Browse = () => {
               {/* Condition */}
               <div className="space-y-2">
                 <Label>Condition</Label>
-                <div className="space-y-2">
-                  {conditions.map(condition => (
-                    <div key={condition} className="flex items-center space-x-2">
-                      <Checkbox id={condition} />
-                      <Label htmlFor={condition} className="text-sm">{condition}</Label>
+                <div className="flex flex-col gap-2">
+                  {conditions.map(cond => (
+                    <div key={cond} className="flex items-center space-x-2">
+                      <Checkbox id={cond} checked={selectedConditions.includes(cond)} onCheckedChange={checked => {
+                        setSelectedConditions(prev => checked ? [...prev, cond] : prev.filter(c => c !== cond));
+                      }} />
+                      <Label htmlFor={cond} className="text-sm">{cond}</Label>
                     </div>
                   ))}
                 </div>
@@ -350,14 +280,14 @@ const Browse = () => {
               {/* Brand */}
               <div className="space-y-2">
                 <Label>Brand</Label>
-                <Select defaultValue="all-brands">
+                <Select value={brand} onValueChange={setBrand}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>{brand}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {brands.map(brand => (
-                      <SelectItem key={brand} value={brand.toLowerCase().replace(' ', '-')}>
-                        {brand}
+                    {brands.map(brandOption => (
+                      <SelectItem key={brandOption} value={brandOption}>
+                        {brandOption}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -16,13 +16,25 @@ import {
   Edit,
   Eye
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { fetchWithAuth } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 const Dashboard = () => {
   const [user, setUser] = useState<{ full_name: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [myItems, setMyItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [swaps, setSwaps] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [swapsLoading, setSwapsLoading] = useState(true);
+  const [selectedSwap, setSelectedSwap] = useState<any>(null);
+  const [swapMessages, setSwapMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -43,7 +55,50 @@ const Dashboard = () => {
       }
     };
     fetchUser();
-  }, []);
+  }, [location]);
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      setItemsLoading(true);
+      try {
+        const res = await fetchWithAuth('/api/my-items/');
+        if (res.ok) {
+          const data = await res.json();
+          setMyItems(data);
+        } else {
+          setMyItems([]);
+        }
+      } catch {
+        setMyItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+    fetchItems();
+  }, [location]);
+
+  useEffect(() => {
+    const fetchSwaps = async () => {
+      setSwapsLoading(true);
+      try {
+        const res = await fetchWithAuth('/api/swaps/');
+        if (res.ok) {
+          const data = await res.json();
+          setSwaps(data.swaps);
+          setUnreadCount(data.unread_count);
+        } else {
+          setSwaps([]);
+          setUnreadCount(0);
+        }
+      } catch {
+        setSwaps([]);
+        setUnreadCount(0);
+      } finally {
+        setSwapsLoading(false);
+      }
+    };
+    fetchSwaps();
+  }, [location]);
 
   const userStats = {
     points: 145,
@@ -84,26 +139,44 @@ const Dashboard = () => {
     }
   ];
 
-  const activeSwaps = [
-    {
-      id: 1,
-      type: "outgoing",
-      item: "Summer Floral Dress",
-      with: "Emma K.",
-      status: "awaiting_response",
-      image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=80&h=80&fit=crop&crop=center",
-      userImage: "https://images.unsplash.com/photo-1494790108755-2616b612b1fd?w=40&h=40&fit=crop&crop=center"
-    },
-    {
-      id: 2,
-      type: "incoming",
-      item: "Classic Denim Jeans",
-      with: "Alex R.",
-      status: "pending_meetup",
-      image: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=80&h=80&fit=crop&crop=center",
-      userImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=center"
+  // Active swaps and swap history
+  const activeSwaps = swaps.filter((swap: any) => ['pending', 'accepted', 'meetup_pending', 'awaiting_response'].includes(swap.status));
+  const swapHistory = swaps.filter((swap: any) => ['completed', 'cancelled', 'declined'].includes(swap.status));
+
+  // Swap detail modal logic
+  const openSwapDetail = async (swap: any) => {
+    setSelectedSwap(swap);
+    setMessageLoading(true);
+    try {
+      const res = await fetchWithAuth(`/api/swaps/${swap.id}/messages/`);
+      if (res.ok) {
+        setSwapMessages(await res.json());
+      } else {
+        setSwapMessages([]);
+      }
+    } catch {
+      setSwapMessages([]);
+    } finally {
+      setMessageLoading(false);
     }
-  ];
+  };
+  const sendMessage = async () => {
+    if (!selectedSwap || !newMessage.trim()) return;
+    setMessageLoading(true);
+    try {
+      await fetchWithAuth(`/api/swaps/${selectedSwap.id}/messages/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newMessage })
+      });
+      // Refresh messages
+      const res = await fetchWithAuth(`/api/swaps/${selectedSwap.id}/messages/`);
+      if (res.ok) setSwapMessages(await res.json());
+      setNewMessage('');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
 
   const achievements = [
     { name: "First Swap", completed: true, icon: "🤝" },
@@ -254,42 +327,34 @@ const Dashboard = () => {
                 <CardTitle>My Items</CardTitle>
                 <CardDescription>Manage your listed items</CardDescription>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/my-items">View All</Link>
-              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/my-items')}>View All</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border">
-                <img 
-                  src={item.image} 
-                  alt={item.title}
-                  className="w-12 h-12 rounded-md object-cover"
-                />
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium truncate">{item.title}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge 
-                      variant={
-                        item.status === 'active' ? 'default' :
-                        item.status === 'swapped' ? 'secondary' : 'outline'
-                      }
-                      className="text-xs"
-                    >
-                      {item.status === 'active' ? 'Active' :
-                       item.status === 'swapped' ? 'Swapped' : 'Pending'}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      <Eye className="inline h-3 w-3 mr-1" />{item.views}
-                    </span>
+            {itemsLoading ? (
+              <div>Loading...</div>
+            ) : myItems.length === 0 ? (
+              <div>No items listed yet.</div>
+            ) : (
+              myItems.slice(0, 3).map((item: any) => (
+                <Link to={`/item/${item.id}`} key={item.id} className="block">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border">
+                    {item.photo && (
+                      <img src={`http://localhost:8000${item.photo}`} alt={item.title} className="w-12 h-12 rounded-md object-cover" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{item.title}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={item.status === 'active' ? 'default' : item.status === 'swapped' ? 'secondary' : 'outline'} className="text-xs">
+                          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{item.category}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {item.interested} interested
-                </div>
-              </div>
-            ))}
+                </Link>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -297,9 +362,9 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <div>
+              <div className="flex items-center gap-2">
                 <CardTitle>Active Swaps</CardTitle>
-                <CardDescription>Ongoing exchanges</CardDescription>
+                {unreadCount > 0 && <span className="ml-2 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">{unreadCount}</span>}
               </div>
               <Button variant="outline" size="sm" asChild>
                 <Link to="/swaps">View All</Link>
@@ -307,50 +372,153 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activeSwaps.map((swap) => (
-              <div key={swap.id} className="space-y-3 p-4 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <img 
-                    src={swap.image} 
-                    alt={swap.item}
-                    className="w-12 h-12 rounded-md object-cover"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium">{swap.item}</h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Avatar className="h-5 w-5">
-                        <AvatarImage src={swap.userImage} />
-                        <AvatarFallback className="text-xs">{swap.with[0]}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-muted-foreground">
-                        {swap.type === 'outgoing' ? 'with' : 'from'} {swap.with}
-                      </span>
+            {swapsLoading ? (
+              <div>Loading...</div>
+            ) : activeSwaps.length === 0 ? (
+              <div>No active swaps.</div>
+            ) : (
+              activeSwaps.slice(0, 3).map((swap: any) => (
+                <div key={swap.id} className="space-y-3 p-4 rounded-lg border cursor-pointer" onClick={() => openSwapDetail(swap)}>
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={swap.receiver_item?.photo ? `http://localhost:8000${swap.receiver_item.photo}` : ''} 
+                      alt={swap.receiver_item?.title || ''}
+                      className="w-12 h-12 rounded-md object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-medium">{swap.receiver_item?.title || ''}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={swap.receiver?.avatar || ''} />
+                          <AvatarFallback className="text-xs">{swap.receiver?.full_name?.[0] || '?'}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-muted-foreground">
+                          with {swap.receiver?.full_name || ''}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-xs">
+                      {swap.status === 'awaiting_response' ? (
+                        <>
+                          <Clock className="h-3 w-3 mr-1" /> Awaiting Response
+                        </>
+                      ) : swap.status === 'meetup_pending' ? (
+                        <>
+                          <CheckCircle className="h-3 w-3 mr-1" /> Pending Meetup
+                        </>
+                      ) : (
+                        swap.status.charAt(0).toUpperCase() + swap.status.slice(1)
+                      )}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        let newStatus = swap.status === 'awaiting_response' ? 'meetup_pending' : 'completed';
+                        await fetchWithAuth(`/api/swaps/${swap.id}/`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ status: newStatus })
+                        });
+                        // Refresh swaps
+                        const res = await fetchWithAuth('/api/swaps/');
+                        if (res.ok) {
+                          const data = await res.json();
+                          setSwaps(data.swaps);
+                          setUnreadCount(data.unread_count);
+                        }
+                      }}
+                    >
+                      {swap.status === 'awaiting_response' ? 'Follow Up' : swap.status === 'meetup_pending' ? 'Arrange Meetup' : 'Update'}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+        {/* Swap History */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Swap History</CardTitle>
+            <CardDescription>Completed, cancelled, and declined swaps</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {swapHistory.length === 0 ? (
+              <div>No swap history yet.</div>
+            ) : (
+              swapHistory.slice(0, 3).map((swap: any) => (
+                <div key={swap.id} className="space-y-2 p-3 rounded-lg border cursor-pointer" onClick={() => openSwapDetail(swap)}>
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src={swap.receiver_item?.photo ? `http://localhost:8000${swap.receiver_item.photo}` : ''} 
+                      alt={swap.receiver_item?.title || ''}
+                      className="w-10 h-10 rounded-md object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-medium">{swap.receiver_item?.title || ''}</h4>
+                      <span className="text-xs text-muted-foreground">{swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}</span>
                     </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-xs">
-                    {swap.status === 'awaiting_response' ? (
-                      <>
-                        <Clock className="h-3 w-3 mr-1" />
-                        Awaiting Response
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Pending Meetup
-                      </>
-                    )}
-                  </Badge>
-                  <Button variant="outline" size="sm">
-                    {swap.status === 'awaiting_response' ? 'Follow Up' : 'Arrange Meetup'}
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
+        {/* Swap Detail Modal */}
+        <Dialog open={!!selectedSwap} onOpenChange={() => setSelectedSwap(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Swap Details</DialogTitle>
+            </DialogHeader>
+            {selectedSwap && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <img src={selectedSwap.receiver_item?.photo ? `http://localhost:8000${selectedSwap.receiver_item.photo}` : ''} alt={selectedSwap.receiver_item?.title || ''} className="w-12 h-12 rounded-md object-cover" />
+                  <div>
+                    <div className="font-medium">{selectedSwap.receiver_item?.title || ''}</div>
+                    <div className="text-xs text-muted-foreground">with {selectedSwap.receiver?.full_name || ''}</div>
+                    <div className="text-xs text-muted-foreground">Status: {selectedSwap.status}</div>
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="font-semibold mb-2">Messages</div>
+                  <div className="max-h-40 overflow-y-auto space-y-2">
+                    {messageLoading ? (
+                      <div>Loading...</div>
+                    ) : swapMessages.length === 0 ? (
+                      <div className="text-xs text-muted-foreground">No messages yet.</div>
+                    ) : (
+                      swapMessages.map((msg: any) => (
+                        <div key={msg.id} className="text-sm">
+                          <span className="font-semibold">{msg.sender_name}: </span>{msg.content}
+                          <span className="text-xs text-muted-foreground ml-2">{new Date(msg.created_at).toLocaleString()}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      className="flex-1 border rounded px-2 py-1 text-sm"
+                      value={newMessage}
+                      onChange={e => setNewMessage(e.target.value)}
+                      placeholder="Type a message..."
+                      onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+                      disabled={messageLoading}
+                    />
+                    <Button onClick={sendMessage} disabled={messageLoading || !newMessage.trim()}>Send</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedSwap(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       {error && <div className="text-red-500 text-center mt-4">{error}</div>}
     </div>

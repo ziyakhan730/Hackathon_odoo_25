@@ -17,12 +17,26 @@ import {
   CheckCircle,
   Coins
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '@/lib/utils';
 
 const AddItem = () => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState('');
   const [agreedToGuidelines, setAgreedToGuidelines] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [brand, setBrand] = useState('');
+  const [size, setSize] = useState('');
+  const [color, setColor] = useState('');
+  const [condition, setCondition] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
 
   const categories = [
     'Tops', 'Bottoms', 'Dresses', 'Jackets', 'Knitwear', 
@@ -41,12 +55,28 @@ const AddItem = () => {
     { value: 'fair', label: 'Fair', description: 'Noticeable wear but still great' }
   ];
 
+  // Points calculation logic
+  const getPointsForCondition = (condition: string) => {
+    switch (condition) {
+      case 'excellent': return 50;
+      case 'good': return 30;
+      case 'fair': return 10;
+      case 'new': return 60;
+      case 'like_new': return 45;
+      case 'used': return 5;
+      case 'vintage': return 40;
+      default: return 0;
+    }
+  };
+
+  const estimatedPoints = getPointsForCondition(condition);
+
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      // In a real app, you'd upload to a service and get URLs back
-      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
-      setUploadedImages(prev => [...prev, ...newImages].slice(0, 5)); // Max 5 images
+    if (files && files[0]) {
+      setPhotoFile(files[0]);
+      const newImages = [URL.createObjectURL(files[0])];
+      setUploadedImages(prev => [...newImages, ...prev].slice(0, 5));
     }
   };
 
@@ -72,7 +102,44 @@ const AddItem = () => {
     }
   };
 
-  const estimatedPoints = Math.floor(Math.random() * 20) + 15; // Demo calculation
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    if (!category) {
+      setError('Please select a category.');
+      setLoading(false);
+      return;
+    }
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('category', category);
+    formData.append('brand', brand);
+    formData.append('size', size);
+    formData.append('color', color);
+    formData.append('condition', condition);
+    formData.append('tags', tags.join(','));
+    if (photoFile) formData.append('photo', photoFile);
+    try {
+      const res = await fetchWithAuth('/api/items/', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        setSuccess('Item listed successfully!');
+        setTimeout(() => navigate('/dashboard'), 1200);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to list item');
+      }
+    } catch (err) {
+      setError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -82,7 +149,7 @@ const AddItem = () => {
           Share your preloved clothes with the ReWear community and earn points
         </p>
       </div>
-
+      <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Form */}
         <div className="lg:col-span-2 space-y-6">
@@ -160,6 +227,9 @@ const AddItem = () => {
                   id="title"
                   placeholder="e.g., Vintage Denim Jacket"
                   className="text-base"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  required
                 />
               </div>
 
@@ -170,20 +240,23 @@ const AddItem = () => {
                   placeholder="Describe your item's condition, style, fit, and any unique features..."
                   rows={4}
                   className="text-base"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  required
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Category *</Label>
-                  <Select>
+                  <Select value={category} onValueChange={setCategory} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category.toLowerCase()}>
-                          {category}
+                      {categories.map(categoryOption => (
+                        <SelectItem key={categoryOption} value={categoryOption.toLowerCase()}>
+                          {categoryOption}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -195,6 +268,8 @@ const AddItem = () => {
                   <Input
                     id="brand"
                     placeholder="e.g., Levi's, Zara, H&M"
+                    value={brand}
+                    onChange={e => setBrand(e.target.value)}
                   />
                 </div>
               </div>
@@ -202,7 +277,7 @@ const AddItem = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Size *</Label>
-                  <Select>
+                  <Select value={size} onValueChange={setSize} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
@@ -221,12 +296,14 @@ const AddItem = () => {
                   <Input
                     id="color"
                     placeholder="e.g., Blue, Black"
+                    value={color}
+                    onChange={e => setColor(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Condition *</Label>
-                  <Select>
+                  <Select value={condition} onValueChange={setCondition} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select condition" />
                     </SelectTrigger>
@@ -380,14 +457,16 @@ const AddItem = () => {
                     {' '}and confirm that this item meets ReWear's quality standards
                   </Label>
                 </div>
-
+                {error && <div className="text-red-500 text-center text-sm">{error}</div>}
+                {success && <div className="text-green-600 text-center text-sm">{success}</div>}
                 <Button 
                   className="w-full" 
                   variant="hero"
-                  disabled={!agreedToGuidelines}
+                  disabled={!agreedToGuidelines || loading}
+                  type="submit"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  List My Item
+                  {loading ? 'Listing...' : 'List My Item'}
                 </Button>
 
                 <p className="text-xs text-muted-foreground text-center">
@@ -398,6 +477,7 @@ const AddItem = () => {
           </Card>
         </div>
       </div>
+      </form>
     </div>
   );
 };

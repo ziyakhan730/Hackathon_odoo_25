@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,48 +18,62 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
-  User
+  User,
+  CheckCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { fetchWithAuth } from '@/lib/utils';
+
+const getImageUrl = (photo: string) => {
+  if (!photo) return '';
+  return photo.startsWith('http') ? photo : `http://localhost:8000${photo}`;
+};
 
 const ItemDetail = () => {
+  const { id } = useParams();
+  const [item, setItem] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [myItems, setMyItems] = useState<any[]>([]);
+  const [selectedMyItem, setSelectedMyItem] = useState<number | null>(null);
+  const [swapLoading, setSwapLoading] = useState(false);
+  const [swapMessage, setSwapMessage] = useState('');
 
-  const item = {
-    id: 1,
-    title: "Vintage Denim Jacket",
-    description: "Beautiful vintage denim jacket in excellent condition. This classic piece features authentic fading and a perfect fit. Originally from a premium brand, it's been well-cared for and is ready for its next adventure. Perfect for layering and adding a timeless touch to any outfit.",
-    category: "Jackets",
-    subcategory: "Denim",
-    size: "M",
-    condition: "Excellent",
-    brand: "Levi's",
-    color: "Blue",
-    points: 25,
-    tags: ["vintage", "classic", "casual", "layering"],
-    images: [
-      "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=600&h=600&fit=crop&crop=center",
-      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=600&fit=crop&crop=center",
-      "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=600&h=600&fit=crop&crop=center"
-    ],
-    owner: {
-      name: "Sarah Miller",
-      rating: 4.8,
-      totalSwaps: 24,
-      memberSince: "March 2024",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b1fd?w=64&h=64&fit=crop&crop=center",
-      location: "San Francisco, CA",
-      responseTime: "Usually responds within 2 hours"
-    },
-    availability: "available",
-    postedDate: "2 days ago",
-    measurements: {
-      chest: "42 inches",
-      length: "26 inches",
-      sleeve: "24 inches"
-    }
-  };
+  useEffect(() => {
+    const fetchItem = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch(`http://localhost:8000/api/items/${id}/`);
+        if (res.ok) {
+          const data = await res.json();
+          setItem(data);
+        } else {
+          let msg = 'Item not found or not authorized.';
+          try {
+            const errData = await res.json();
+            if (errData && errData.detail) msg = errData.detail;
+          } catch {}
+          setError(msg);
+        }
+      } catch (e: any) {
+        setError(e?.message || 'Network error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItem();
+  }, [id]);
+
+  if (loading) return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  if (error) return <div className="container mx-auto px-4 py-8 text-red-500 font-semibold text-center">{error}</div>;
+  if (!item) return <div className="container mx-auto px-4 py-8 text-center">Item not found.</div>;
+
+  // Remove the debugPanel and its rendering
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % item.images.length);
@@ -74,6 +89,53 @@ const ItemDetail = () => {
       case 'good': return 'bg-warning/10 text-warning border-warning/20';
       case 'fair': return 'bg-orange-100 text-orange-800 border-orange-200';
       default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  // For tags, handle both array and string
+  const tags = Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
+
+  const openSwapModal = async () => {
+    setShowSwapModal(true);
+    setSwapMessage('');
+    setSelectedMyItem(null);
+    // Fetch user's available items (not in active swaps)
+    try {
+      const res = await fetchWithAuth('/api/available-items/');
+      if (res.ok) {
+        setMyItems(await res.json());
+      } else {
+        setMyItems([]);
+      }
+    } catch {
+      setMyItems([]);
+    }
+  };
+
+  const handleProposeSwap = async () => {
+    if (!selectedMyItem) return;
+    setSwapLoading(true);
+    setSwapMessage('');
+    try {
+      const res = await fetchWithAuth('/api/swaps/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposer_item: selectedMyItem,
+          receiver_item: item.id,
+          receiver: item.owner
+        })
+      });
+      if (res.ok) {
+        setSwapMessage('Swap proposal sent!');
+        setShowSwapModal(false);
+      } else {
+        setSwapMessage('Failed to propose swap.');
+      }
+    } catch {
+      setSwapMessage('Network error.');
+    } finally {
+      setSwapLoading(false);
     }
   };
 
@@ -93,16 +155,18 @@ const ItemDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Image Gallery */}
         <div className="space-y-4">
+          {/* For the image gallery, just show the main photo */}
           <div className="relative group">
             <div className="aspect-square rounded-lg overflow-hidden bg-muted">
               <img 
-                src={item.images[currentImageIndex]} 
-                alt={item.title}
+                src={getImageUrl(item.photo)} 
+                alt={item.title || 'Item photo'}
                 className="w-full h-full object-cover"
+                onError={e => (e.currentTarget.style.display = 'none')}
               />
             </div>
             
-            {item.images.length > 1 && (
+            {/* {item.images.length > 1 && (
               <>
                 <Button
                   variant="ghost"
@@ -121,13 +185,13 @@ const ItemDetail = () => {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </>
-            )}
+            )} */}
           </div>
 
           {/* Thumbnail Navigation */}
-          {item.images.length > 1 && (
+          {/* {item.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
-              {item.images.map((image, index) => (
+              {item.images.map((image: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -143,7 +207,7 @@ const ItemDetail = () => {
                 </button>
               ))}
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Item Details */}
@@ -151,11 +215,11 @@ const ItemDetail = () => {
           <div>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h1 className="text-3xl font-bold mb-2">{item.title}</h1>
+                <h1 className="text-3xl font-bold mb-2">{item.title || 'No title'}</h1>
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="outline">{item.brand}</Badge>
-                  <Badge variant="outline">{item.category}</Badge>
-                  <Badge className={getConditionColor(item.condition)}>{item.condition}</Badge>
+                  <Badge variant="outline">{item.brand || 'No brand'}</Badge>
+                  <Badge variant="outline">{item.category || 'No category'}</Badge>
+                  <Badge className={getConditionColor(item.condition || '-')}>{item.condition || '-'}</Badge>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -173,23 +237,21 @@ const ItemDetail = () => {
             </div>
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-              <span>Size: {item.size}</span>
+              <span>Size: {item.size || '-'}</span>
               <span>•</span>
-              <span>Color: {item.color}</span>
+              <span>Color: {item.color || '-'}</span>
               <span>•</span>
-              <span>Posted {item.postedDate}</span>
+              <span>Posted {item.postedDate || '-'}</span>
             </div>
 
-            <p className="text-muted-foreground leading-relaxed">{item.description}</p>
+            <p className="text-muted-foreground leading-relaxed">{item.description || 'No description'}</p>
           </div>
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
-            {item.tags.map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs">
-                #{tag}
-              </Badge>
-            ))}
+            {tags.length > 0 ? tags.map((tag: string) => (
+              <Badge key={tag} variant="secondary" className="text-xs">#{tag}</Badge>
+            )) : <span className="text-xs text-muted-foreground">No tags</span>}
           </div>
 
           {/* Action Buttons */}
@@ -203,7 +265,7 @@ const ItemDetail = () => {
                 <div className="text-right">
                   <div className="text-2xl font-bold text-primary flex items-center gap-1">
                     <Coins className="h-5 w-5" />
-                    {item.points}
+                    {item.points || 0}
                   </div>
                   <div className="text-xs text-muted-foreground">points</div>
                 </div>
@@ -216,7 +278,7 @@ const ItemDetail = () => {
                 <div className="font-semibold">Propose a Swap</div>
                 <div className="text-sm text-muted-foreground">Exchange with one of your items</div>
               </div>
-              <Button variant="outline">
+              <Button variant="outline" onClick={openSwapModal}>
                 <ArrowLeftRight className="mr-2 h-4 w-4" />
                 Swap Request
               </Button>
@@ -254,9 +316,9 @@ const ItemDetail = () => {
                 <div>
                   <h4 className="font-medium mb-2">Measurements</h4>
                   <div className="space-y-1 text-sm text-muted-foreground">
-                    <div>Chest: {item.measurements.chest}</div>
-                    <div>Length: {item.measurements.length}</div>
-                    <div>Sleeve: {item.measurements.sleeve}</div>
+                    <div>Chest: {item.measurements?.chest || '-'}</div>
+                    <div>Length: {item.measurements?.length || '-'}</div>
+                    <div>Sleeve: {item.measurements?.sleeve || '-'}</div>
                   </div>
                 </div>
                 <div>
@@ -316,15 +378,15 @@ const ItemDetail = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={item.owner.avatar} />
-                <AvatarFallback>{item.owner.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={item.owner?.avatar || ''} />
+                <AvatarFallback>{item.owner?.name?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-semibold">{item.owner.name}</h3>
+                <h3 className="font-semibold">{item.owner?.name || 'No Name'}</h3>
                 <div className="flex items-center gap-1 text-sm">
                   <Star className="h-4 w-4 fill-warning text-warning" />
-                  <span>{item.owner.rating}</span>
-                  <span className="text-muted-foreground">({item.owner.totalSwaps} swaps)</span>
+                  <span>{item.owner?.rating || 0}</span>
+                  <span className="text-muted-foreground">({item.owner?.totalSwaps || 0} swaps)</span>
                 </div>
               </div>
             </div>
@@ -334,15 +396,15 @@ const ItemDetail = () => {
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <User className="h-4 w-4" />
-                <span>Member since {item.owner.memberSince}</span>
+                <span>Member since {item.owner?.memberSince || '-'}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span>{item.owner.location}</span>
+                <span>{item.owner?.location || '-'}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MessageCircle className="h-4 w-4" />
-                <span>{item.owner.responseTime}</span>
+                <span>{item.owner?.responseTime || '-'}</span>
               </div>
             </div>
 
@@ -353,6 +415,39 @@ const ItemDetail = () => {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={showSwapModal} onOpenChange={setShowSwapModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select one of your items to swap</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {myItems.length === 0 ? (
+              <div>You have no items to offer.</div>
+            ) : (
+              myItems.map((myItem: any) => (
+                <div
+                  key={myItem.id}
+                  className={`flex items-center gap-3 p-2 rounded cursor-pointer border ${selectedMyItem === myItem.id ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  onClick={() => setSelectedMyItem(myItem.id)}
+                >
+                  <img src={`http://localhost:8000${myItem.photo}`} alt={myItem.title} className="w-10 h-10 rounded object-cover" />
+                  <div className="flex-1">
+                    <div className="font-medium">{myItem.title}</div>
+                    <div className="text-xs text-muted-foreground">{myItem.category}</div>
+                  </div>
+                  {selectedMyItem === myItem.id && <CheckCircle className="text-primary" />}
+                </div>
+              ))
+            )}
+          </div>
+          {swapMessage && <div className="text-red-500 text-center mt-2">{swapMessage}</div>}
+          <DialogFooter>
+            <Button onClick={handleProposeSwap} disabled={!selectedMyItem || swapLoading}>
+              {swapLoading ? 'Proposing...' : 'Propose Swap'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

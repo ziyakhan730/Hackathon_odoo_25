@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,48 +20,30 @@ import {
 import heroImage from '@/assets/hero-image.jpg';
 
 const Landing = () => {
-  const featuredItems = [
-    {
-      id: 1,
-      title: "Vintage Denim Jacket",
-      category: "Jackets",
-      size: "M",
-      condition: "Excellent",
-      points: 25,
-      image: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center",
-      user: "Sarah M."
-    },
-    {
-      id: 2,
-      title: "Designer Silk Blouse",
-      category: "Tops",
-      size: "S",
-      condition: "Like New",
-      points: 35,
-      image: "https://images.unsplash.com/photo-1585487000160-6ebcfceb0d03?w=300&h=300&fit=crop&crop=center",
-      user: "Emma K."
-    },
-    {
-      id: 3,
-      title: "Cozy Wool Sweater",
-      category: "Knitwear",
-      size: "L",
-      condition: "Good",
-      points: 20,
-      image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&h=300&fit=crop&crop=center",
-      user: "Alex R."
-    },
-    {
-      id: 4,
-      title: "Summer Floral Dress",
-      category: "Dresses",
-      size: "M",
-      condition: "Excellent",
-      points: 30,
-      image: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=300&h=300&fit=crop&crop=center",
-      user: "Maya P."
-    }
-  ];
+  const [featuredItems, setFeaturedItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetch('http://localhost:8000/api/items/');
+        if (res.ok) {
+          const data = await res.json();
+          setFeaturedItems(data.slice(0, 4));
+        } else {
+          setError('Failed to fetch items');
+        }
+      } catch (err) {
+        setError('Network error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchItems();
+  }, []);
 
   const stats = [
     { label: "Active Members", value: "15K+", icon: Users },
@@ -184,34 +167,42 @@ const Landing = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredItems.map((item) => (
-              <Card key={item.id} className="overflow-hidden hover:shadow-medium transition-all duration-300 group">
-                <div className="aspect-square overflow-hidden">
-                  <img 
-                    src={item.image} 
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{item.title}</h3>
-                    <Badge variant="secondary">{item.points} pts</Badge>
+            {loading ? (
+              <div className="col-span-4 text-center">Loading...</div>
+            ) : error ? (
+              <div className="col-span-4 text-center text-red-500">{error}</div>
+            ) : featuredItems.length === 0 ? (
+              <div className="col-span-4 text-center">No featured items yet.</div>
+            ) : (
+              featuredItems.map((item) => (
+                <Card key={item.id} className="overflow-hidden hover:shadow-medium transition-all duration-300 group">
+                  <div className="aspect-square overflow-hidden">
+                    <img 
+                      src={item.photo && (item.photo.startsWith('http') ? item.photo : `http://localhost:8000${item.photo}`)} 
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                    <Badge variant="outline" className="text-xs">Size {item.size}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">by {item.user}</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-warning text-warning" />
-                      <span className="text-sm text-muted-foreground">{item.condition}</span>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg">{item.title}</h3>
+                      <Badge variant="secondary">{item.points || 0} pts</Badge>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="flex gap-2 mb-3">
+                      <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                      <Badge variant="outline" className="text-xs">Size {item.size}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Owner ID: {item.owner}</span>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-warning text-warning" />
+                        <span className="text-sm text-muted-foreground">{item.condition}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       </section>
