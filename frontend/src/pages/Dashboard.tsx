@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,8 +17,34 @@ import {
   Eye
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { fetchWithAuth } from '@/lib/utils';
 
 const Dashboard = () => {
+  const [user, setUser] = useState<{ full_name: string; email: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await fetchWithAuth('/api/user/');
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          setError('Failed to fetch user info');
+        }
+      } catch (err) {
+        setError('Network error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
   const userStats = {
     points: 145,
     itemsListed: 12,
@@ -90,7 +117,9 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Welcome back, Sarah!</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {loading ? 'Loading...' : user ? `Welcome back, ${user.full_name}!` : 'Welcome!'}
+          </h1>
           <p className="text-muted-foreground">Here's what's happening with your sustainable wardrobe</p>
         </div>
         <Button variant="hero" asChild>
@@ -162,11 +191,11 @@ const Dashboard = () => {
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src="https://images.unsplash.com/photo-1494790108755-2616b612b1fd?w=64&h=64&fit=crop&crop=center" />
-                  <AvatarFallback>SM</AvatarFallback>
+                  <AvatarFallback>{user ? user.full_name[0] : '?'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-lg">Sarah Miller</h3>
-                  <p className="text-muted-foreground">Member since March 2024</p>
+                  <h3 className="font-semibold text-lg">{user ? user.full_name : '...'}</h3>
+                  <p className="text-muted-foreground">{user ? user.email : ''}</p>
                   <div className="flex items-center gap-1 mt-1">
                     <Star className="h-4 w-4 fill-warning text-warning" />
                     <span className="text-sm font-medium">{userStats.rating}</span>
@@ -185,11 +214,6 @@ const Dashboard = () => {
                   4 more swaps to reach "Sustainability Champion"
                 </p>
               </div>
-
-              <Button variant="outline" className="w-full">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Button>
             </CardContent>
           </Card>
 
@@ -328,6 +352,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      {error && <div className="text-red-500 text-center mt-4">{error}</div>}
     </div>
   );
 };

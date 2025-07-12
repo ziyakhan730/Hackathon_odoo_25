@@ -58,7 +58,12 @@ export const Layout = ({ children }: LayoutProps) => {
             <Button variant="ghost" size="icon">
               <User className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => {
+              localStorage.removeItem('access');
+              localStorage.removeItem('refresh');
+              localStorage.removeItem('user');
+              window.location.href = '/auth';
+            }}>
               <LogOut className="w-4 h-4" />
               Sign Out
             </Button>

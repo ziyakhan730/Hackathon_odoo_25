@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -14,6 +14,11 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function PrivateRoute({ children }: { children: JSX.Element }) {
+  const token = localStorage.getItem('access');
+  return token ? children : <Navigate to="/auth" replace />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -27,11 +32,11 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           
           {/* Protected routes with layout */}
-          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/browse" element={<Layout><Browse /></Layout>} />
-          <Route path="/item/:id" element={<Layout><ItemDetail /></Layout>} />
-          <Route path="/add-item" element={<Layout><AddItem /></Layout>} />
-          <Route path="/admin" element={<Layout><Admin /></Layout>} />
+          <Route path="/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+          <Route path="/browse" element={<PrivateRoute><Layout><Browse /></Layout></PrivateRoute>} />
+          <Route path="/item/:id" element={<PrivateRoute><Layout><ItemDetail /></Layout></PrivateRoute>} />
+          <Route path="/add-item" element={<PrivateRoute><Layout><AddItem /></Layout></PrivateRoute>} />
+          <Route path="/admin" element={<PrivateRoute><Layout><Admin /></Layout></PrivateRoute>} />
           
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />

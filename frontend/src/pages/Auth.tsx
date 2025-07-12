@@ -9,8 +9,91 @@ import { Leaf, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Auth = () => {
+  // Login state
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Register state
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
+  const [registerTerms, setRegisterTerms] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Login handler
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const res = await fetch('/api/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('access', data.access);
+        localStorage.setItem('refresh', data.refresh);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        // Redirect or update UI as needed
+        setLoginError('');
+        window.location.href = '/dashboard'; // Redirect to dashboard after login
+      } else {
+        setLoginError(data.detail || data.error || 'Login failed');
+      }
+    } catch (err) {
+      setLoginError('Network error');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // Register handler
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterError('');
+    setRegisterSuccess('');
+    setRegisterLoading(true);
+    try {
+      const res = await fetch('/api/register/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: registerName,
+          email: registerEmail,
+          password: registerPassword,
+          confirm_password: registerConfirmPassword,
+          terms: registerTerms
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('access', data.access);
+        localStorage.setItem('refresh', data.refresh);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        setRegisterError('');
+        setRegisterSuccess('Account created! Redirecting...');
+        setTimeout(() => {
+          window.location.href = '/dashboard'; // Redirect to dashboard after registration
+        }, 1500);
+      } else {
+        setRegisterError(data.detail || data.error || 'Registration failed');
+      }
+    } catch (err) {
+      setRegisterError('Network error');
+    } finally {
+      setRegisterLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-secondary flex items-center justify-center p-4">
@@ -39,179 +122,194 @@ const Auth = () => {
                 <TabsTrigger value="login">Sign In</TabsTrigger>
                 <TabsTrigger value="register">Sign Up</TabsTrigger>
               </TabsList>
-              
               {/* Login Tab */}
               <TabsContent value="login" className="space-y-4 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                    />
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        className="pl-10"
+                        value={loginEmail}
+                        onChange={e => setLoginEmail(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      className="pl-10 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        className="pl-10 pr-10"
+                        value={loginPassword}
+                        onChange={e => setLoginPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="remember" />
+                      <Label htmlFor="remember" className="text-sm">Remember me</Label>
+                    </div>
+                    <Button variant="link" className="px-0 text-sm" type="button">
+                      Forgot password?
                     </Button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="remember" />
-                    <Label htmlFor="remember" className="text-sm">Remember me</Label>
+                  {loginError && <div className="text-red-500 text-sm text-center">{loginError}</div>}
+                  <Button className="w-full" variant="default" type="submit" disabled={loginLoading}>
+                    {loginLoading ? 'Signing In...' : 'Sign In'}
+                  </Button>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Don't have an account?{' '}
+                    <Button variant="link" className="px-0 text-sm" type="button">
+                      Sign up here
+                    </Button>
                   </div>
-                  <Button variant="link" className="px-0 text-sm">
-                    Forgot password?
-                  </Button>
-                </div>
-
-                <Button className="w-full" variant="default">
-                  Sign In
-                </Button>
-
-                <div className="text-center text-sm text-muted-foreground">
-                  Don't have an account?{' '}
-                  <Button variant="link" className="px-0 text-sm">
-                    Sign up here
-                  </Button>
-                </div>
+                </form>
               </TabsContent>
-
               {/* Register Tab */}
               <TabsContent value="register" className="space-y-4 mt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="register-name">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-name"
-                      type="text"
-                      placeholder="Enter your full name"
-                      className="pl-10"
-                    />
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="register-name">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-name"
+                        type="text"
+                        placeholder="Enter your full name"
+                        className="pl-10"
+                        value={registerName}
+                        onChange={e => setRegisterName(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                    />
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        className="pl-10"
+                        value={registerEmail}
+                        onChange={e => setRegisterEmail(e.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
-                      className="pl-10 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="register-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        className="pl-10 pr-10"
+                        value={registerPassword}
+                        onChange={e => setRegisterPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      className="pl-10 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        className="pl-10 pr-10"
+                        value={registerConfirmPassword}
+                        onChange={e => setRegisterConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="terms" />
-                  <Label htmlFor="terms" className="text-sm">
-                    I agree to the{' '}
-                    <Button variant="link" className="px-0 text-sm">
-                      Terms of Service
-                    </Button>
-                    {' '}and{' '}
-                    <Button variant="link" className="px-0 text-sm">
-                      Privacy Policy
-                    </Button>
-                  </Label>
-                </div>
-
-                <Button className="w-full" variant="default">
-                  Create Account
-                </Button>
-
-                <div className="text-center text-sm text-muted-foreground">
-                  Already have an account?{' '}
-                  <Button variant="link" className="px-0 text-sm">
-                    Sign in here
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="terms" checked={registerTerms} onCheckedChange={checked => setRegisterTerms(!!checked)} />
+                    <Label htmlFor="terms" className="text-sm">
+                      I agree to the{' '}
+                      <Button variant="link" className="px-0 text-sm" type="button">
+                        Terms of Service
+                      </Button>
+                      {' '}and{' '}
+                      <Button variant="link" className="px-0 text-sm" type="button">
+                        Privacy Policy
+                      </Button>
+                    </Label>
+                  </div>
+                  {registerError && <div className="text-red-500 text-sm text-center">{registerError}</div>}
+                  {registerSuccess && <div className="text-green-600 text-sm text-center">{registerSuccess}</div>}
+                  <Button className="w-full" variant="default" type="submit" disabled={registerLoading}>
+                    {registerLoading ? 'Creating Account...' : 'Create Account'}
                   </Button>
-                </div>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Already have an account?{' '}
+                    <Button variant="link" className="px-0 text-sm" type="button">
+                      Sign in here
+                    </Button>
+                  </div>
+                </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-
         <div className="text-center mt-6 text-sm text-muted-foreground">
           <p>By continuing, you're helping build a more sustainable future</p>
         </div>
