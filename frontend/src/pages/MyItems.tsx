@@ -90,13 +90,20 @@ const MyItems = () => {
             </div>
             <Link to={`/item/${item.id}`} className="block">
               <CardContent className="flex items-center gap-4 p-4">
-                {item.photo && (
+                {/* Show first image from images array if available, else fallback to photo */}
+                {item.images && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0].startsWith('http') ? item.images[0] : `http://localhost:8000${item.images[0]}`}
+                    alt={item.title}
+                    className="w-16 h-16 rounded object-cover border"
+                  />
+                ) : item.photo ? (
                   <img
                     src={item.photo.startsWith('http') ? item.photo : `http://localhost:8000${item.photo}`}
                     alt={item.title}
                     className="w-16 h-16 rounded object-cover border"
                   />
-                )}
+                ) : null}
                 <div className="flex-1 min-w-0">
                   <h2 className="font-semibold text-lg truncate">{item.title}</h2>
                   <div className="flex items-center gap-2 mt-1">

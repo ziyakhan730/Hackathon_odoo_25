@@ -235,3 +235,9 @@ class SwapDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Swap.objects.all()
     lookup_field = 'pk'
+
+class ItemDeleteView(generics.DestroyAPIView):
+    serializer_class = ItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Item.objects.all()
+    lookup_field = 'pk'

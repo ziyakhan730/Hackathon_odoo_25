@@ -164,18 +164,26 @@ const ItemDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Image Gallery */}
         <div className="space-y-4">
-          {/* For the image gallery, just show the main photo */}
+          {/* Image Gallery */}
           <div className="relative group">
             <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-              <img 
-                src={getImageUrl(item.photo)} 
-                alt={item.title || 'Item photo'}
-                className="w-full h-full object-cover"
-                onError={e => (e.currentTarget.style.display = 'none')}
-              />
+              {item.images && item.images.length > 0 ? (
+                <img
+                  src={getImageUrl(item.images[currentImageIndex])}
+                  alt={item.title || 'Item photo'}
+                  className="w-full h-full object-cover"
+                  onError={e => (e.currentTarget.style.display = 'none')}
+                />
+              ) : (
+                <img
+                  src={getImageUrl(item.photo)}
+                  alt={item.title || 'Item photo'}
+                  className="w-full h-full object-cover"
+                  onError={e => (e.currentTarget.style.display = 'none')}
+                />
+              )}
             </div>
-            
-            {/* {item.images.length > 1 && (
+            {item.images && item.images.length > 1 && (
               <>
                 <Button
                   variant="ghost"
@@ -194,11 +202,10 @@ const ItemDetail = () => {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </>
-            )} */}
+            )}
           </div>
-
           {/* Thumbnail Navigation */}
-          {/* {item.images.length > 1 && (
+          {item.images && item.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto">
               {item.images.map((image: string, index: number) => (
                 <button
@@ -208,15 +215,15 @@ const ItemDetail = () => {
                     index === currentImageIndex ? 'border-primary' : 'border-transparent'
                   }`}
                 >
-                  <img 
-                    src={image} 
+                  <img
+                    src={getImageUrl(image)}
                     alt={`${item.title} ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                 </button>
               ))}
             </div>
-          )} */}
+          )}
         </div>
 
         {/* Item Details */}

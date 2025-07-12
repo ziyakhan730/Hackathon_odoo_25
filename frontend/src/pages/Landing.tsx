@@ -97,7 +97,7 @@ const Landing = () => {
                 Start Swapping <ArrowRight className="ml-2" />
               </Link>
             </Button>
-            <Button variant="outline" size="xl" className="border-white text-white hover:bg-white hover:text-primary" asChild>
+            <Button variant="outline" size="xl" className="border-white text-black hover:bg-white hover:text-primary" asChild>
               <Link to="/browse">
                 <Search className="mr-2" /> Browse Items
               </Link>
@@ -222,7 +222,7 @@ const Landing = () => {
                 <Plus className="mr-2" /> Join ReWear
               </Link>
             </Button>
-            <Button variant="outline" size="xl" className="border-white text-white hover:bg-white hover:text-primary" asChild>
+            <Button variant="outline" size="xl" className="border-white text-black hover:bg-white hover:text-primary" asChild>
               <Link to="/how-it-works">
                 Learn More
               </Link>
