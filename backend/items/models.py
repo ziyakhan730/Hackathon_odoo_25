@@ -39,7 +39,7 @@ class Item(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.id}: {self.title}"
 
 
 class Swap(models.Model):
@@ -72,3 +72,10 @@ class SwapMessage(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender} in Swap {self.swap.id}"
+
+class ItemImage(models.Model):
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='item_photos/')
+
+    def __str__(self):
+        return f"Image for {self.item.title} ({self.id})"

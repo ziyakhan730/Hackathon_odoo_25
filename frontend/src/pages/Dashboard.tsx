@@ -142,6 +142,7 @@ const Dashboard = () => {
   // Active swaps and swap history
   const activeSwaps = swaps.filter((swap: any) => ['pending', 'accepted', 'meetup_pending', 'awaiting_response'].includes(swap.status));
   const swapHistory = swaps.filter((swap: any) => ['completed', 'cancelled', 'declined'].includes(swap.status));
+  const successfulSwaps = swaps.filter((swap: any) => swap.status === 'completed').length;
 
   // Swap detail modal logic
   const openSwapDetail = async (swap: any) => {
@@ -221,7 +222,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground">Items Listed</p>
-                <p className="text-3xl font-bold text-primary">{userStats.itemsListed}</p>
+                <p className="text-3xl font-bold text-primary">{myItems.length}</p>
               </div>
               <ShoppingBag className="h-8 w-8 text-primary" />
             </div>
@@ -233,7 +234,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground">Successful Swaps</p>
-                <p className="text-3xl font-bold text-success">{userStats.swapsCompleted}</p>
+                <p className="text-3xl font-bold text-success">{successfulSwaps}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-success" />
             </div>
@@ -380,22 +381,31 @@ const Dashboard = () => {
               activeSwaps.slice(0, 3).map((swap: any) => (
                 <div key={swap.id} className="space-y-3 p-4 rounded-lg border cursor-pointer" onClick={() => openSwapDetail(swap)}>
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={swap.receiver_item?.photo ? `http://localhost:8000${swap.receiver_item.photo}` : ''} 
-                      alt={swap.receiver_item?.title || ''}
-                      className="w-12 h-12 rounded-md object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium">{swap.receiver_item?.title || ''}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={swap.receiver?.avatar || ''} />
-                          <AvatarFallback className="text-xs">{swap.receiver?.full_name?.[0] || '?'}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm text-muted-foreground">
-                          with {swap.receiver?.full_name || ''}
-                        </span>
-                      </div>
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={
+                          swap.proposer_item_detail?.images && swap.proposer_item_detail.images.length > 0
+                            ? swap.proposer_item_detail.images[0]
+                            : swap.proposer_item_detail?.photo || ''
+                        }
+                        alt={swap.proposer_item_detail?.title || ''}
+                        className="w-12 h-12 rounded-md object-cover"
+                        onError={e => { e.currentTarget.src = ''; }}
+                      />
+                      <span className="text-xs">You</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={
+                          swap.receiver_item_detail?.images && swap.receiver_item_detail.images.length > 0
+                            ? swap.receiver_item_detail.images[0]
+                            : swap.receiver_item_detail?.photo || ''
+                        }
+                        alt={swap.receiver_item_detail?.title || ''}
+                        className="w-12 h-12 rounded-md object-cover"
+                        onError={e => { e.currentTarget.src = ''; }}
+                      />
+                      <span className="text-xs">Them</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -450,17 +460,43 @@ const Dashboard = () => {
             {swapHistory.length === 0 ? (
               <div>No swap history yet.</div>
             ) : (
-              swapHistory.slice(0, 3).map((swap: any) => (
+              swapHistory.map((swap: any) => (
                 <div key={swap.id} className="space-y-2 p-3 rounded-lg border cursor-pointer" onClick={() => openSwapDetail(swap)}>
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={swap.receiver_item?.photo ? `http://localhost:8000${swap.receiver_item.photo}` : ''} 
-                      alt={swap.receiver_item?.title || ''}
-                      className="w-10 h-10 rounded-md object-cover"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium">{swap.receiver_item?.title || ''}</h4>
-                      <span className="text-xs text-muted-foreground">{swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}</span>
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={
+                          swap.proposer_item_detail?.images && swap.proposer_item_detail.images.length > 0
+                            ? swap.proposer_item_detail.images[0]
+                            : swap.proposer_item_detail?.photo || ''
+                        }
+                        alt={swap.proposer_item_detail?.title || ''}
+                        className="w-10 h-10 rounded-md object-cover"
+                        onError={e => { e.currentTarget.src = ''; }}
+                      />
+                      <span className="text-xs">You</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={
+                          swap.receiver_item_detail?.images && swap.receiver_item_detail.images.length > 0
+                            ? swap.receiver_item_detail.images[0]
+                            : swap.receiver_item_detail?.photo || ''
+                        }
+                        alt={swap.receiver_item_detail?.title || ''}
+                        className="w-10 h-10 rounded-md object-cover"
+                        onError={e => { e.currentTarget.src = ''; }}
+                      />
+                      <span className="text-xs">Them</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-base truncate">{swap.receiver_item_detail?.title || ''}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{new Date(swap.created_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -477,11 +513,13 @@ const Dashboard = () => {
             {selectedSwap && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <img src={selectedSwap.receiver_item?.photo ? `http://localhost:8000${selectedSwap.receiver_item.photo}` : ''} alt={selectedSwap.receiver_item?.title || ''} className="w-12 h-12 rounded-md object-cover" />
-                  <div>
-                    <div className="font-medium">{selectedSwap.receiver_item?.title || ''}</div>
-                    <div className="text-xs text-muted-foreground">with {selectedSwap.receiver?.full_name || ''}</div>
-                    <div className="text-xs text-muted-foreground">Status: {selectedSwap.status}</div>
+                  <div className="flex flex-col items-center">
+                    <img src={selectedSwap.proposer_item_detail?.photo ? `http://localhost:8000${selectedSwap.proposer_item_detail.photo}` : ''} alt={selectedSwap.proposer_item_detail?.title || ''} className="w-12 h-12 rounded-md object-cover" onError={e => { e.currentTarget.src = ''; }} />
+                    <span className="text-xs">You</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <img src={selectedSwap.receiver_item_detail?.photo ? `http://localhost:8000${selectedSwap.receiver_item_detail.photo}` : ''} alt={selectedSwap.receiver_item_detail?.title || ''} className="w-12 h-12 rounded-md object-cover" onError={e => { e.currentTarget.src = ''; }} />
+                    <span className="text-xs">Them</span>
                   </div>
                 </div>
                 <div className="border-t pt-4">

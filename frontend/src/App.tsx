@@ -13,6 +13,7 @@ import AddItem from "./pages/AddItem";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import MyItems from './pages/MyItems';
+import Swaps from './pages/Swaps';
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/add-item" element={<PrivateRoute><Layout><AddItem /></Layout></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><Layout><Admin /></Layout></PrivateRoute>} />
           <Route path="/my-items" element={<PrivateRoute><Layout><MyItems /></Layout></PrivateRoute>} />
+          <Route path="/swaps" element={<PrivateRoute><Layout><Swaps /></Layout></PrivateRoute>} />
           
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />

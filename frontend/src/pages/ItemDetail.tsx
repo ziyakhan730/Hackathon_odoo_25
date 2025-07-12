@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog as AlertDialog } from '@/components/ui/dialog';
 import { fetchWithAuth } from '@/lib/utils';
 
 const getImageUrl = (photo: string) => {
@@ -42,6 +43,7 @@ const ItemDetail = () => {
   const [selectedMyItem, setSelectedMyItem] = useState<number | null>(null);
   const [swapLoading, setSwapLoading] = useState(false);
   const [swapMessage, setSwapMessage] = useState('');
+  const [showOwnSwapAlert, setShowOwnSwapAlert] = useState(false);
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -95,7 +97,14 @@ const ItemDetail = () => {
   // For tags, handle both array and string
   const tags = Array.isArray(item.tags) ? item.tags : (item.tags ? item.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
 
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const isOwnItem = item.owner === currentUser.id;
+
   const openSwapModal = async () => {
+    if (isOwnItem) {
+      setShowOwnSwapAlert(true);
+      return;
+    }
     setShowSwapModal(true);
     setSwapMessage('');
     setSelectedMyItem(null);
@@ -448,6 +457,17 @@ const ItemDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={showOwnSwapAlert} onOpenChange={setShowOwnSwapAlert}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cannot Swap Your Own Item</DialogTitle>
+          </DialogHeader>
+          <div>You cannot propose a swap with your own item.</div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowOwnSwapAlert(false)}>OK</Button>
+          </DialogFooter>
+        </DialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -32,7 +32,7 @@ const AddItem = () => {
   const [size, setSize] = useState('');
   const [color, setColor] = useState('');
   const [condition, setCondition] = useState('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -73,15 +73,17 @@ const AddItem = () => {
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && files[0]) {
-      setPhotoFile(files[0]);
-      const newImages = [URL.createObjectURL(files[0])];
-      setUploadedImages(prev => [...newImages, ...prev].slice(0, 5));
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files).slice(0, 5 - imageFiles.length);
+      setImageFiles(prev => [...prev, ...newFiles].slice(0, 5));
+      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
+      setUploadedImages(prev => [...prev, ...newImages].slice(0, 5));
     }
   };
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const addTag = () => {
@@ -102,13 +104,35 @@ const AddItem = () => {
     }
   };
 
+  const isFormValid = () => {
+    return (
+      title.trim() &&
+      description.trim() &&
+      category &&
+      size &&
+      condition &&
+      imageFiles.length > 0 &&
+      agreedToGuidelines
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
-    if (!category) {
-      setError('Please select a category.');
+    if (!title.trim() || !description.trim() || !category || !size || !condition) {
+      setError('Please fill in all required fields.');
+      setLoading(false);
+      return;
+    }
+    if (imageFiles.length === 0) {
+      setError('Please upload at least one image.');
+      setLoading(false);
+      return;
+    }
+    if (!agreedToGuidelines) {
+      setError('You must agree to the guidelines.');
       setLoading(false);
       return;
     }
@@ -121,7 +145,7 @@ const AddItem = () => {
     formData.append('color', color);
     formData.append('condition', condition);
     formData.append('tags', tags.join(','));
-    if (photoFile) formData.append('photo', photoFile);
+    imageFiles.forEach(file => formData.append('images', file));
     try {
       const res = await fetchWithAuth('/api/items/', {
         method: 'POST',
@@ -199,14 +223,12 @@ const AddItem = () => {
                         <Button
                           variant="destructive"
                           size="icon"
-                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-2 right-2 opacity-80 group-hover:opacity-100"
+                          type="button"
                           onClick={() => removeImage(index)}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="w-4 h-4" />
                         </Button>
-                        {index === 0 && (
-                          <Badge className="absolute bottom-2 left-2">Main Photo</Badge>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -462,7 +484,7 @@ const AddItem = () => {
                 <Button 
                   className="w-full" 
                   variant="hero"
-                  disabled={!agreedToGuidelines || loading}
+                  disabled={!isFormValid() || loading}
                   type="submit"
                 >
                   <Upload className="mr-2 h-4 w-4" />
